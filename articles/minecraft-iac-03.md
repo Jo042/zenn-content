@@ -1,8 +1,13 @@
 ---
 title: "MinecraftサーバーををIaC化してみた【Part3】 - Ansibleで構成管理を自動化した"
 emoji: "🐕"
-topics: []
-published: false
+topics: :
+  - "ansible"
+  - "docker"
+  - "minecraft"
+  - "localstack"
+  - "opentofu"
+published: true
 ---
 
 # MinecraftサーバーをIaCで作る Part3 - Ansibleで構成管理を自動化した
@@ -75,22 +80,50 @@ echo "export PATH=$PATH:/opt/bin" >> ~/.bashrc
 
 ```
 ansible/
-├── ansible.cfg              # Ansible全体の設定
+├── ansible.cfg                          # Ansible全体の設定（接続方式・インベントリパス等）
 ├── inventory/
-│   └── hosts.yml            # 接続先サーバーの定義
-├── group_vars/
-│   └── all.yml              # 全体で使う変数
+│   ├── group_vars/
+│   │   └── all/                         # 全ホスト共通の変数（ディレクトリ形式で分割管理）
+│   │       ├── main.yml                 # 通常変数（ポート番号・パス・設定値等）
+│   │       └── vault.yml                # 暗号化変数（パスワード・APIキー等）
+│   ├── host_vars/
+│   │   ├── minecraft-server.yml         # minecraft-server固有の変数（実際の値）
+│   │   └── minecraft-server.yml.sample  # host_varsのサンプル（git管理用テンプレート）
+│   ├── hosts.yml                        # 接続先サーバーの定義（実際の値）
+│   └── hosts.yml.example                # hostsのサンプル（git管理用テンプレート）
 ├── playbooks/
-│   ├── setup.yml            # 初期セットアップ（Docker等）
-│   ├── deploy.yml           # Minecraftデプロイ
-│   ├── start.yml            # サーバー起動
-│   ├── stop.yml             # サーバー停止
-│   ├── backup.yml           # バックアップ
-│   └── upgrade.yml          # バージョンアップ
+│   ├── setup.yml                        # 初期セットアップ（Docker等の環境構築）
+│   ├── deploy.yml                       # Minecraftデプロイ（コンテナ起動含む）
+│   ├── start.yml                        # サーバー起動
+│   ├── stop.yml                         # サーバー停止
+│   ├── backup.yml                       # ワールドデータのバックアップ
+│   ├── restore.yml                      # バックアップからのリストア
+│   └── upgrade.yml                      # Minecraftバージョンアップ
+├── requirements.yml                     # 外部ロール・コレクションの依存定義（ansible-galaxy用）
 └── roles/
-    ├── common/              # 共通設定
-    ├── docker/              # Dockerセットアップ
-    └── minecraft/           # Minecraft固有の設定
+    ├── common/                          # 全サーバー共通の設定
+    │   └── tasks/
+    │       └── main.yml                 # タスクのエントリポイント
+    ├── docker/                          # Dockerのセットアップ
+    │   ├── defaults/
+    │   │   └── main.yml                 # Dockerのデフォルト変数（バージョン等）
+    │   ├── handlers/
+    │   │   └── main.yml                 # Dockerデーモンの再起動等
+    │   └── tasks/
+    │       └── main.yml                 # Dockerインストール・設定タスク
+    └── minecraft/                       # Minecraft固有の設定
+        ├── defaults/
+        │   └── main.yml                 # Minecraftのデフォルト変数（バージョン・メモリ等）
+        ├── handlers/
+        │   └── main.yml                 # コンテナ再起動等
+        ├── tasks/
+        │   ├── main.yml                 # タスクのエントリポイント（各タスクをinclude）
+        │   ├── setup.yml                # 初回セットアップ処理
+        │   └── backup.yml               # バックアップ処理
+        └── templates/
+            ├── docker-compose.yml.j2    # docker-compose定義のテンプレート
+            ├── minecraft.service.j2     # systemdサービス定義のテンプレート
+            └── backup.sh.j2             # バックアップスクリプトのテンプレート
 ```
 
 **Roleとは？** タスクをまとめた再利用可能なモジュールのこと。「Docker」「Minecraft」のように機能単位で分割することで、管理しやすくなる。
