@@ -8,7 +8,7 @@ topics:
   - "discord"
   - "python"
   - "opentofu"
-published: false
+published: true
 ---
 
 ## この記事で書くこと
