@@ -2,7 +2,7 @@
 title: "MinecraftサーバーををIaC化してみた【Part3】 - Ansibleで構成管理を自動化した"
 emoji: "🐕"
 type: "tech"
-topics: :
+topics:
   - "ansible"
   - "docker"
   - "minecraft"
